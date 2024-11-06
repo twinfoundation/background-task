@@ -1,12 +1,8 @@
 // Copyright 2024 IOTA Stiftung.
 // SPDX-License-Identifier: Apache-2.0.
-import type { IError } from "@twin.org/core";
 
 /**
- * Interface describing a task handler.
+ * Interface describing a task handler, exceptions thrown in the handler will be caught.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type BackgroundTaskHandler<T = any, U = any> = (payload: T) => Promise<{
-	result?: U;
-	error?: IError;
-}>;
+export type BackgroundTaskHandler<T = any, U = any> = (payload: T) => Promise<U>;

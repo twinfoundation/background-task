@@ -655,22 +655,17 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 					}
 				});
 
-				// Execute the task
-				const { result, error } = await this._taskHandlers[task.type](task.payload);
+				// Execute the task, if it throws we will catch this and store it as a failure
+				const result = await this._taskHandlers[task.type](task.payload);
 
-				if (Is.object(error)) {
-					// Task results in error, so set the error which will trigger a retry if needed.
-					taskError = BaseError.fromError(error).toJsonObject();
-				} else {
-					// No error so set the result and complete the task.
-					task.result = result;
-					task.status = TaskStatus.Success;
-					task.dateNextProcess = undefined;
-					task.dateCompleted = new Date(Date.now()).toISOString();
-					delete task.retriesRemaining;
-					delete task.retryInterval;
-					delete task.error;
-				}
+				// No error so set the result and complete the task.
+				task.result = result;
+				task.status = TaskStatus.Success;
+				task.dateNextProcess = undefined;
+				task.dateCompleted = new Date(Date.now()).toISOString();
+				delete task.retriesRemaining;
+				delete task.retryInterval;
+				delete task.error;
 			} catch (err) {
 				// Task handler threw an error, so set the error which will trigger a retry if needed.
 				taskError = BaseError.fromError(err).toJsonObject();

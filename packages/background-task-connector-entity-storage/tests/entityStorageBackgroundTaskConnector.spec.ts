@@ -130,7 +130,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			"my-type",
 			async payload => {
 				payload.counter++;
-				return { result: { res: "ok" } };
+				return { res: "ok" };
 			}
 		);
 
@@ -148,7 +148,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			"my-type",
 			async payload => {
 				payload.counter++;
-				return { result: { res: "ok" } };
+				return { res: "ok" };
 			}
 		);
 
@@ -223,7 +223,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					throw new GeneralError("Test", "error");
 				}
 				payload.counter++;
-				return { result: { res: "ok" } };
+				return { res: "ok" };
 			}
 		);
 
@@ -289,7 +289,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			"my-type",
 			async payload => {
 				payload.counter = counter++;
-				return { result: { res: "ok" } };
+				return { res: "ok" };
 			}
 		);
 
@@ -399,7 +399,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					throw new GeneralError("Test", "error");
 				}
 				payload.counter = counter++;
-				return { result: { res: "ok" } };
+				return { res: "ok" };
 			}
 		);
 
@@ -514,7 +514,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					throw new GeneralError("Test", "error");
 				}
 				payload.counter = counter++;
-				return { result: { res: "ok" } };
+				return { res: "ok" };
 			}
 		);
 

@@ -1,8 +1,8 @@
 # Type Alias: BackgroundTaskHandler()\<T, U\>
 
-> **BackgroundTaskHandler**\<`T`, `U`\>: (`payload`) => `Promise`\<`object`\>
+> **BackgroundTaskHandler**\<`T`, `U`\>: (`payload`) => `Promise`\<`U`\>
 
-Interface describing a task handler.
+Interface describing a task handler, exceptions thrown in the handler will be caught.
 
 ## Type Parameters
 
@@ -16,12 +16,4 @@ Interface describing a task handler.
 
 ## Returns
 
-`Promise`\<`object`\>
-
-### result?
-
-> `optional` **result**: `U`
-
-### error?
-
-> `optional` **error**: `IError`
+`Promise`\<`U`\>
