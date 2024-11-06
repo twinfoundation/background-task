@@ -12,8 +12,10 @@ import {
 	Guards,
 	type IError,
 	Is,
+	type IValidationFailure,
 	ObjectHelper,
-	RandomHelper
+	RandomHelper,
+	Validation
 } from "@twin.org/core";
 import {
 	ComparisonOperator,
@@ -141,6 +143,52 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		this._currentTasks = {};
 		this._started = false;
 		this._lastCleanup = 0;
+
+		const validationErrors: IValidationFailure[] = [];
+		if (!Is.undefined(options?.config?.taskInterval)) {
+			Guards.integer(
+				this.CLASS_NAME,
+				nameof(options.config.taskInterval),
+				options.config.taskInterval
+			);
+			Validation.integer(
+				nameof(options.config.taskInterval),
+				options.config.taskInterval,
+				validationErrors,
+				undefined,
+				{ minValue: 1 }
+			);
+		}
+		if (!Is.undefined(options?.config?.retryInterval)) {
+			Guards.integer(
+				this.CLASS_NAME,
+				nameof(options.config.retryInterval),
+				options.config.retryInterval
+			);
+			Validation.integer(
+				nameof(options.config.retryInterval),
+				options.config.retryInterval,
+				validationErrors,
+				undefined,
+				{ minValue: 1 }
+			);
+		}
+		if (!Is.undefined(options?.config?.cleanupInterval)) {
+			Guards.integer(
+				this.CLASS_NAME,
+				nameof(options.config.cleanupInterval),
+				options.config.cleanupInterval
+			);
+			Validation.integer(
+				nameof(options.config.cleanupInterval),
+				options.config.cleanupInterval,
+				validationErrors,
+				undefined,
+				{ minValue: 5000 }
+			);
+		}
+		Validation.asValidationError(this.CLASS_NAME, nameof(options?.config), validationErrors);
+
 		this._taskInterval =
 			options?.config?.taskInterval ?? EntityStorageBackgroundTaskConnector._DEFAULT_TASK_INTERVAL;
 		this._retryInterval =
@@ -234,6 +282,39 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		}
 	): Promise<string> {
 		Guards.stringValue(this.CLASS_NAME, nameof(type), type);
+
+		const validationErrors: IValidationFailure[] = [];
+		if (!Is.undefined(options?.retryCount)) {
+			Guards.integer(this.CLASS_NAME, nameof(options.retryCount), options.retryCount);
+			Validation.integer(
+				nameof(options.retryCount),
+				options.retryCount,
+				validationErrors,
+				undefined,
+				{ minValue: 1 }
+			);
+		}
+		if (!Is.undefined(options?.retryInterval)) {
+			Guards.integer(this.CLASS_NAME, nameof(options.retryInterval), options.retryInterval);
+			Validation.integer(
+				nameof(options.retryInterval),
+				options.retryInterval,
+				validationErrors,
+				undefined,
+				{ minValue: 1 }
+			);
+		}
+		if (!Is.undefined(options?.retainFor)) {
+			Guards.integer(this.CLASS_NAME, nameof(options.retainFor), options.retainFor);
+			Validation.integer(
+				nameof(options.retainFor),
+				options.retainFor,
+				validationErrors,
+				undefined,
+				{ minValue: -1 }
+			);
+		}
+		Validation.asValidationError(this.CLASS_NAME, nameof(options), validationErrors);
 
 		const id = Converter.bytesToHex(RandomHelper.generate(16));
 
@@ -564,7 +645,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 				this._currentTasks[task.type].task = task;
 
 				this._logging?.log({
-					level: "error",
+					level: "info",
 					source: this.CLASS_NAME,
 					ts: Date.now(),
 					message: "start",
@@ -627,6 +708,18 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 				}
 				await this._backgroundTaskEntityStorageConnector.set(task);
 			}
+
+			this._logging?.log({
+				level: "info",
+				source: this.CLASS_NAME,
+				ts: Date.now(),
+				message: "complete",
+				data: {
+					id: task.id,
+					type: task.type,
+					status: task.status
+				}
+			});
 
 			// Start processing of next task after a short interval
 			delete this._currentTasks[task.type].task;
@@ -703,6 +796,8 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 					await this._backgroundTaskEntityStorageConnector.remove(entity.id as string);
 				}
 			} while (Is.stringValue(cursor));
-		} catch {}
+		} catch {
+			// If cleaning up the retained items fail we don't really care, they will get cleaned up on the next sweep.
+		}
 	}
 }

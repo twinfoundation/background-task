@@ -5,7 +5,7 @@
 	"info": {
 		"entityStorageBackgroundTaskConnector": {
 			"start": "Processing task \"{id}\" with type \"type\"",
-			"complete": "Completed processing task \"{id}\" with type \"type\"",
+			"complete": "Completed processing task \"{id}\" with type \"type\" with status \"{status}\"",
 			"noHandler": "No handler found for task \"{id}\" with type \"type\""
 		}
 	}
