@@ -107,7 +107,9 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
 		await backgroundTaskConnector.start("");
-		await backgroundTaskConnector.create("my-type");
+		const taskId = await backgroundTaskConnector.create("my-type");
+		expect(taskId.split(":")[0]).toEqual("background-task");
+		expect(taskId.split(":")[1]).toEqual("entity-storage");
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toEqual([
@@ -257,6 +259,11 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			}
 		]);
+
+		const task = await backgroundTaskConnector.get(
+			"background-task:entity-storage:00000000000000000000000000000000"
+		);
+		expect(task).toBeDefined();
 
 		await waitForStatus("success");
 

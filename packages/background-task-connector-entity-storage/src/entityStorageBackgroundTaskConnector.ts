@@ -9,12 +9,14 @@ import {
 import {
 	BaseError,
 	Converter,
+	GeneralError,
 	Guards,
 	type IError,
 	Is,
 	type IValidationFailure,
 	ObjectHelper,
 	RandomHelper,
+	Urn,
 	Validation
 } from "@twin.org/core";
 import {
@@ -339,7 +341,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 			await this.processTasks(type);
 		}
 
-		return id;
+		return `background-task:${EntityStorageBackgroundTaskConnector.NAMESPACE}:${id}`;
 	}
 
 	/**
@@ -348,9 +350,20 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * @returns The details of the task.
 	 */
 	public async get<T, U>(taskId: string): Promise<IBackgroundTask<T, U> | undefined> {
-		Guards.stringValue(this.CLASS_NAME, nameof(taskId), taskId);
+		Urn.guard(this.CLASS_NAME, nameof(taskId), taskId);
 
-		const task = await this._backgroundTaskEntityStorageConnector.get(taskId);
+		const urnParsed = Urn.fromValidString(taskId);
+
+		if (urnParsed.namespaceMethod() !== EntityStorageBackgroundTaskConnector.NAMESPACE) {
+			throw new GeneralError(this.CLASS_NAME, "namespaceMismatch", {
+				namespace: EntityStorageBackgroundTaskConnector.NAMESPACE,
+				id: taskId
+			});
+		}
+
+		const task = await this._backgroundTaskEntityStorageConnector.get(
+			urnParsed.namespaceSpecific(1)
+		);
 
 		if (Is.object(task)) {
 			return this.mapEntityToModel(task);
@@ -363,9 +376,20 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * @returns Nothing.
 	 */
 	public async retry(taskId: string): Promise<void> {
-		Guards.stringValue(this.CLASS_NAME, nameof(taskId), taskId);
+		Urn.guard(this.CLASS_NAME, nameof(taskId), taskId);
 
-		const task = await this._backgroundTaskEntityStorageConnector.get(taskId);
+		const urnParsed = Urn.fromValidString(taskId);
+
+		if (urnParsed.namespaceMethod() !== EntityStorageBackgroundTaskConnector.NAMESPACE) {
+			throw new GeneralError(this.CLASS_NAME, "namespaceMismatch", {
+				namespace: EntityStorageBackgroundTaskConnector.NAMESPACE,
+				id: taskId
+			});
+		}
+
+		const task = await this._backgroundTaskEntityStorageConnector.get(
+			urnParsed.namespaceSpecific(1)
+		);
 
 		if (
 			Is.object(task) &&
@@ -383,12 +407,23 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * @returns Nothing.
 	 */
 	public async remove(taskId: string): Promise<void> {
-		Guards.stringValue(this.CLASS_NAME, nameof(taskId), taskId);
+		Urn.guard(this.CLASS_NAME, nameof(taskId), taskId);
 
-		const task = await this._backgroundTaskEntityStorageConnector.get(taskId);
+		const urnParsed = Urn.fromValidString(taskId);
+
+		if (urnParsed.namespaceMethod() !== EntityStorageBackgroundTaskConnector.NAMESPACE) {
+			throw new GeneralError(this.CLASS_NAME, "namespaceMismatch", {
+				namespace: EntityStorageBackgroundTaskConnector.NAMESPACE,
+				id: taskId
+			});
+		}
+
+		const task = await this._backgroundTaskEntityStorageConnector.get(
+			urnParsed.namespaceSpecific(1)
+		);
 
 		if (Is.object(task)) {
-			await this._backgroundTaskEntityStorageConnector.remove(taskId);
+			await this._backgroundTaskEntityStorageConnector.remove(urnParsed.namespaceSpecific(1));
 		}
 	}
 
@@ -398,9 +433,20 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * @returns Nothing.
 	 */
 	public async cancel(taskId: string): Promise<void> {
-		Guards.stringValue(this.CLASS_NAME, nameof(taskId), taskId);
+		Urn.guard(this.CLASS_NAME, nameof(taskId), taskId);
 
-		const task = await this._backgroundTaskEntityStorageConnector.get(taskId);
+		const urnParsed = Urn.fromValidString(taskId);
+
+		if (urnParsed.namespaceMethod() !== EntityStorageBackgroundTaskConnector.NAMESPACE) {
+			throw new GeneralError(this.CLASS_NAME, "namespaceMismatch", {
+				namespace: EntityStorageBackgroundTaskConnector.NAMESPACE,
+				id: taskId
+			});
+		}
+
+		const task = await this._backgroundTaskEntityStorageConnector.get(
+			urnParsed.namespaceSpecific(1)
+		);
 
 		if (Is.object(task) && task.status === TaskStatus.Pending) {
 			task.status = TaskStatus.Cancelled;

@@ -6,7 +6,8 @@
 		"entityStorageBackgroundTaskConnector": {
 			"start": "Processing task \"{id}\" with type \"type\"",
 			"complete": "Completed processing task \"{id}\" with type \"type\" with status \"{status}\"",
-			"noHandler": "No handler found for task \"{id}\" with type \"type\""
+			"noHandler": "No handler found for task \"{id}\" with type \"type\"",
+			"namespaceMismatch": "The namespace in the urn \"{id}\" does not match the namespace of the entity storage background task \"{namespace}\""
 		}
 	}
 }
