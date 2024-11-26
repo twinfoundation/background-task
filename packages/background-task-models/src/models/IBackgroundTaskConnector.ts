@@ -14,9 +14,15 @@ export interface IBackgroundTaskConnector extends IComponent {
 	 * @param taskType The type of the task the handler can process.
 	 * @param module The module the handler is in.
 	 * @param method The method in the module to execute.
+	 * @param stateChangeCallback The callback to execute when the task state is updated.
 	 * @returns Nothing.
 	 */
-	registerHandler(taskType: string, module: string, method: string): Promise<void>;
+	registerHandler<T, U>(
+		taskType: string,
+		module: string,
+		method: string,
+		stateChangeCallback?: (task: IBackgroundTask<T, U>) => Promise<void>
+	): Promise<void>;
 
 	/**
 	 * Unregister a handler for a task.

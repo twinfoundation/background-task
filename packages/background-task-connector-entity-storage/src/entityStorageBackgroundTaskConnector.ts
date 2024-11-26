@@ -76,6 +76,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		[taskType: string]: {
 			module: string;
 			method: string;
+			stateChangeCallback?: (task: IBackgroundTask) => Promise<void>;
 		};
 	};
 
@@ -255,15 +256,22 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * @param taskType The type of the task the handler can process.
 	 * @param module The module the handler is in.
 	 * @param method The method in the module to execute.
+	 * @param stateChangeCallback The callback to execute when the task state is updated.
 	 */
-	public async registerHandler(taskType: string, module: string, method: string): Promise<void> {
+	public async registerHandler<T, U>(
+		taskType: string,
+		module: string,
+		method: string,
+		stateChangeCallback?: (task: IBackgroundTask<T, U>) => Promise<void>
+	): Promise<void> {
 		Guards.stringValue(this.CLASS_NAME, nameof(taskType), taskType);
 		Guards.stringValue(this.CLASS_NAME, nameof(module), module);
 		Guards.stringValue(this.CLASS_NAME, nameof(method), method);
 
 		this._taskHandlers[taskType] = {
 			module,
-			method
+			method,
+			stateChangeCallback
 		};
 
 		if (this._started) {
@@ -778,6 +786,11 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 					delete task.retainFor;
 				}
 				await this._backgroundTaskEntityStorageConnector.set(task);
+			}
+
+			const stateChangeCallback = this._taskHandlers[task.type].stateChangeCallback;
+			if (!Is.empty(stateChangeCallback)) {
+				await stateChangeCallback(task);
 			}
 
 			this._logging?.log({
