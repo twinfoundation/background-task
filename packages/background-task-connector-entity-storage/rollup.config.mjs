@@ -1,6 +1,5 @@
 // Copyright 2024 IOTA Stiftung.
 // SPDX-License-Identifier: Apache-2.0.
-import { execSync } from 'child_process';
 import copy from 'rollup-plugin-copy';
 import packageDetails from './package.json' with { type: 'json' };
 

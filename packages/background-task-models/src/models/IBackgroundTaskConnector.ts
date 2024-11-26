@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0.
 import type { IComponent } from "@twin.org/core";
 import type { SortDirection } from "@twin.org/entity";
-import type { BackgroundTaskHandler } from "./backgroundTaskHandler";
 import type { IBackgroundTask } from "./IBackgroundTask";
 import type { TaskStatus } from "./taskStatus";
 
@@ -13,10 +12,11 @@ export interface IBackgroundTaskConnector extends IComponent {
 	/**
 	 * Register a handler for a task.
 	 * @param taskType The type of the task the handler can process.
-	 * @param handler The handler for the task.
+	 * @param module The module the handler is in.
+	 * @param method The method in the module to execute.
 	 * @returns Nothing.
 	 */
-	registerHandler<T, U>(taskType: string, handler: BackgroundTaskHandler<T, U>): Promise<void>;
+	registerHandler(taskType: string, module: string, method: string): Promise<void>;
 
 	/**
 	 * Unregister a handler for a task.

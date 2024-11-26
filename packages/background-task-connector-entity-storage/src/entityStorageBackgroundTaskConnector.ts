@@ -1,7 +1,6 @@
 // Copyright 2024 IOTA Stiftung.
 // SPDX-License-Identifier: Apache-2.0.
 import {
-	type BackgroundTaskHandler,
 	type IBackgroundTask,
 	type IBackgroundTaskConnector,
 	TaskStatus
@@ -16,9 +15,11 @@ import {
 	type IValidationFailure,
 	ObjectHelper,
 	RandomHelper,
+	StringHelper,
 	Urn,
 	Validation
 } from "@twin.org/core";
+import { EngineCoreFactory } from "@twin.org/engine-models";
 import {
 	ComparisonOperator,
 	type EntityCondition,
@@ -30,6 +31,7 @@ import {
 	type IEntityStorageConnector
 } from "@twin.org/entity-storage-models";
 import { type ILoggingConnector, LoggingConnectorFactory } from "@twin.org/logging-models";
+import { ModuleHelper } from "@twin.org/modules";
 import { nameof } from "@twin.org/nameof";
 import type { BackgroundTask } from "./entities/backgroundTask";
 import type { IEntityStorageBackgroundTaskConnectorConfig } from "./models/IEntityStorageBackgroundTaskConnectorConfig";
@@ -70,7 +72,12 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * The handlers for tasks.
 	 * @internal
 	 */
-	private readonly _taskHandlers: { [taskType: string]: BackgroundTaskHandler };
+	private readonly _taskHandlers: {
+		[taskType: string]: {
+			module: string;
+			method: string;
+		};
+	};
 
 	/**
 	 * The entity storage for the background tasks keys.
@@ -124,6 +131,12 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * @internal
 	 */
 	private readonly _cleanupInterval: number;
+
+	/**
+	 * The name of the engine to clone when creating a background task.
+	 * @internal
+	 */
+	private readonly _engineName: string;
 
 	/**
 	 * Create a new instance of EntityStorageBackgroundTaskConnector.
@@ -191,6 +204,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		}
 		Validation.asValidationError(this.CLASS_NAME, nameof(options?.config), validationErrors);
 
+		this._engineName = options?.config?.engineName ?? "engine";
 		this._taskInterval =
 			options?.config?.taskInterval ?? EntityStorageBackgroundTaskConnector._DEFAULT_TASK_INTERVAL;
 		this._retryInterval =
@@ -239,16 +253,18 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	/**
 	 * Register a handler for a task.
 	 * @param taskType The type of the task the handler can process.
-	 * @param handler The handler for the task.
+	 * @param module The module the handler is in.
+	 * @param method The method in the module to execute.
 	 */
-	public async registerHandler<T, U>(
-		taskType: string,
-		handler: BackgroundTaskHandler<T, U>
-	): Promise<void> {
+	public async registerHandler(taskType: string, module: string, method: string): Promise<void> {
 		Guards.stringValue(this.CLASS_NAME, nameof(taskType), taskType);
-		Guards.function(this.CLASS_NAME, nameof(handler), handler);
+		Guards.stringValue(this.CLASS_NAME, nameof(module), module);
+		Guards.stringValue(this.CLASS_NAME, nameof(method), method);
 
-		this._taskHandlers[taskType] = handler;
+		this._taskHandlers[taskType] = {
+			module,
+			method
+		};
 
 		if (this._started) {
 			await this.processTasks(taskType);
@@ -701,8 +717,16 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 					}
 				});
 
+				// Get the clone data for the current engine
+				const engine = EngineCoreFactory.getIfExists(this._engineName);
+				const engineCloneData = engine?.getCloneData();
+
 				// Execute the task, if it throws we will catch this and store it as a failure
-				const result = await this._taskHandlers[task.type](task.payload);
+				const result = await ModuleHelper.execModuleMethodThread(
+					this._taskHandlers[task.type].module,
+					this._taskHandlers[task.type].method,
+					Is.empty(task.payload) ? [engineCloneData] : [engineCloneData, task.payload]
+				);
 
 				// No error so set the result and complete the task.
 				task.result = result;
@@ -715,6 +739,12 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 			} catch (err) {
 				// Task handler threw an error, so set the error which will trigger a retry if needed.
 				taskError = BaseError.fromError(err).toJsonObject();
+				if (
+					taskError.message === `${StringHelper.camelCase(nameof(ModuleHelper))}.workerException` &&
+					!Is.empty(taskError.inner)
+				) {
+					taskError = BaseError.fromError(taskError.inner).toJsonObject();
+				}
 			}
 
 			// If there is an error, set the task to failed and handle retries if needed.

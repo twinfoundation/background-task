@@ -1,6 +1,9 @@
 // Copyright 2024 IOTA Stiftung.
 // SPDX-License-Identifier: Apache-2.0.
-import { GeneralError, RandomHelper } from "@twin.org/core";
+import path from "node:path";
+import { RandomHelper } from "@twin.org/core";
+import { EngineCore } from "@twin.org/engine-core";
+import { EngineCoreFactory } from "@twin.org/engine-models";
 import { SortDirection } from "@twin.org/entity";
 import { MemoryEntityStorageConnector } from "@twin.org/entity-storage-connector-memory";
 import { EntityStorageConnectorFactory } from "@twin.org/entity-storage-models";
@@ -9,34 +12,7 @@ import type { BackgroundTask } from "../src/entities/backgroundTask";
 import { EntityStorageBackgroundTaskConnector } from "../src/entityStorageBackgroundTaskConnector";
 import { initSchema } from "../src/schema";
 
-const FIRST_TIMESTAMP = 1724327000000;
-
 let backgroundTaskEntityStorageConnector: MemoryEntityStorageConnector<BackgroundTask>;
-
-/**
- * Tes payload for testing.
- */
-interface TestPayload {
-	/**
-	 * The id of the item.
-	 */
-	id: number;
-
-	/**
-	 * The counter.
-	 */
-	counter: number;
-}
-
-/**
- * Dummy result for testing.
- */
-interface TestResult {
-	/**
-	 * The result.
-	 */
-	res: string;
-}
 
 /**
  * Wait for status.
@@ -44,15 +20,30 @@ interface TestResult {
  * @param itemIndex The item index to wait for.
  */
 async function waitForStatus(status: string, itemIndex: number = 0): Promise<void> {
-	for (let i = 0; i < 500; i++) {
+	for (let i = 0; i < 50; i++) {
 		await new Promise(resolve => setTimeout(resolve, 100));
 		if (backgroundTaskEntityStorageConnector.getStore()[itemIndex]?.status === status) {
-			break;
+			return;
 		}
 	}
+	// eslint-disable-next-line no-restricted-syntax
+	throw new Error("Timeout waiting for status");
 }
 
-const originalTimeout = globalThis.setTimeout;
+/**
+ * Wait for error.
+ * @param itemIndex The item index to wait for.
+ */
+async function waitForError(itemIndex: number = 0): Promise<void> {
+	for (let i = 0; i < 50; i++) {
+		await new Promise(resolve => setTimeout(resolve, 100));
+		if (backgroundTaskEntityStorageConnector.getStore()[itemIndex]?.error) {
+			return;
+		}
+	}
+	// eslint-disable-next-line no-restricted-syntax
+	throw new Error("Timeout waiting for error");
+}
 
 describe("EntityStorageBackgroundTaskConnector", () => {
 	beforeAll(() => {
@@ -69,12 +60,6 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			() => backgroundTaskEntityStorageConnector
 		);
 
-		const mockNow = vi.fn();
-
-		let timeCounter: number = 0;
-		mockNow.mockImplementation(() => FIRST_TIMESTAMP + timeCounter++);
-		Date.now = mockNow;
-
 		const mockRandom = vi.fn();
 
 		for (let k = 0; k < 50; k++) {
@@ -82,19 +67,6 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		}
 
 		RandomHelper.generate = mockRandom;
-
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(globalThis.setTimeout as any) = vi.fn().mockImplementation((method, interval) => {
-			// Perform a timewarp based on the timeout interval
-			timeCounter += interval;
-			originalTimeout(method, 0);
-		});
-	});
-
-	afterEach(() => {
-		EntityStorageConnectorFactory.unregister("background-task");
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(globalThis.setTimeout as any) = originalTimeout;
 	});
 
 	test("can construct with dependencies", async () => {
@@ -112,11 +84,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		expect(taskId.split(":")[1]).toEqual("entity-storage");
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		expect(store).toEqual([
+		expect(store).toMatchObject([
 			{
-				dateCreated: "2024-08-22T11:43:20.001Z",
-				dateModified: "2024-08-22T11:43:20.001Z",
-				dateNextProcess: "2024-08-22T11:43:20.001Z",
 				id: "00000000000000000000000000000000",
 				retainFor: 0,
 				status: "pending",
@@ -128,12 +97,10 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 	test("can create a task with handler and no retainment", async () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
+		await backgroundTaskConnector.registerHandler(
 			"my-type",
-			async payload => {
-				payload.counter++;
-				return { res: "ok" };
-			}
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
 		);
 
 		await backgroundTaskConnector.start("");
@@ -146,31 +113,25 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 	test("can create a task with handler and retainment", async () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
+		await backgroundTaskConnector.registerHandler(
 			"my-type",
-			async payload => {
-				payload.counter++;
-				return { res: "ok" };
-			}
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
 		);
 
 		await backgroundTaskConnector.start("");
 		await backgroundTaskConnector.create("my-type", { counter: 0 }, { retainFor: 10000 });
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		expect(store).toEqual([
+		expect(store).toMatchObject([
 			{
 				id: "00000000000000000000000000000000",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:20.004Z",
-				dateCompleted: "2024-08-22T11:43:20.005Z",
 				payload: {
-					counter: 1
+					counter: 0
 				},
 				result: {
-					res: "ok"
+					counter: 1
 				},
-				retainUntil: 1724327010004,
 				status: "success",
 				type: "my-type"
 			}
@@ -180,34 +141,32 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 	test("can create a task with handler and retainment with error and no retries", async () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
+		await backgroundTaskConnector.registerHandler(
 			"my-type",
-			async payload => {
-				throw new GeneralError("Test", "error");
-			}
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
 		);
 
 		await backgroundTaskConnector.start("");
-		await backgroundTaskConnector.create("my-type", { counter: 0 }, { retainFor: 10000 });
+		await backgroundTaskConnector.create(
+			"my-type",
+			{ throw: true, counter: 0 },
+			{ retainFor: 10000 }
+		);
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		delete store[0]?.error?.stack;
-		expect(store).toEqual([
+		expect(store).toMatchObject([
 			{
 				id: "00000000000000000000000000000000",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:20.004Z",
-				dateCompleted: "2024-08-22T11:43:20.005Z",
-				retainUntil: 1724327010004,
 				status: "failed",
 				payload: {
-					counter: 0
+					counter: 0,
+					throw: true
 				},
 				error: {
-					source: "Test",
-					name: "GeneralError",
-					message: "test.error"
+					name: "Error",
+					message: "error"
 				}
 			}
 		]);
@@ -216,46 +175,38 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 	test("can create a task with handler and retainment with error and single retry", async () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-		let counter = 0;
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
+		const data = {
+			throw: true,
+			counter: 0
+		};
+		await backgroundTaskConnector.registerHandler(
 			"my-type",
-			async payload => {
-				if (counter === 0) {
-					counter++;
-					throw new GeneralError("Test", "error");
-				}
-				payload.counter++;
-				return { res: "ok" };
-			}
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
 		);
 
 		await backgroundTaskConnector.start("");
-		await backgroundTaskConnector.create(
-			"my-type",
-			{ counter: 0 },
-			{ retainFor: 10000, retryCount: 1, retryInterval: 1000 }
-		);
+		await backgroundTaskConnector.create("my-type", data, {
+			retainFor: 10000,
+			retryCount: 1,
+			retryInterval: 1000
+		});
 
 		let store = backgroundTaskEntityStorageConnector.getStore();
-		delete store[0]?.error?.stack;
-		expect(store).toEqual([
+		expect(store).toMatchObject([
 			{
 				id: "00000000000000000000000000000000",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:20.004Z",
-				dateNextProcess: "2024-08-22T11:43:21.004Z",
 				retryInterval: 1000,
 				retainFor: 10000,
 				status: "pending",
-				retriesRemaining: 0,
 				payload: {
-					counter: 0
+					counter: 0,
+					throw: true
 				},
 				error: {
-					name: "GeneralError",
-					source: "Test",
-					message: "test.error"
+					name: "Error",
+					message: "error"
 				}
 			}
 		]);
@@ -265,24 +216,27 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		);
 		expect(task).toBeDefined();
 
+		if (task?.payload) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(task.payload as any).throw = false;
+		}
+
 		await waitForStatus("success");
 
 		store = backgroundTaskEntityStorageConnector.getStore();
 
-		expect(store).toEqual([
+		expect(store).toMatchObject([
 			{
 				id: "00000000000000000000000000000000",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:21.107Z",
-				dateCompleted: "2024-08-22T11:43:21.108Z",
-				retainUntil: 1724327011107,
 				status: "success",
 				payload: {
-					counter: 1
+					counter: 0,
+					throw: false
 				},
 				result: {
-					res: "ok"
+					counter: 1,
+					throw: false
 				}
 			}
 		]);
@@ -291,104 +245,87 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 	test("can add multiple tasks and process them in order", async () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-		let counter = 0;
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
+		await backgroundTaskConnector.registerHandler(
 			"my-type",
-			async payload => {
-				payload.counter = counter++;
-				return { res: "ok" };
-			}
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
 		);
 
 		await backgroundTaskConnector.start("");
 
 		for (let i = 0; i < 5; i++) {
-			await backgroundTaskConnector.create("my-type", { id: i, counter: 0 }, { retainFor: 10000 });
+			await backgroundTaskConnector.create("my-type", { id: i, counter: i }, { retainFor: 10000 });
 		}
 
 		await waitForStatus("success", 4);
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		expect(store).toEqual([
+
+		expect(store).toMatchObject([
 			{
 				id: "00000000000000000000000000000000",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:20.004Z",
 				status: "success",
 				payload: {
 					id: 0,
 					counter: 0
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.005Z",
-				retainUntil: 1724327010004
+					id: 0,
+					counter: 1
+				}
 			},
 			{
 				id: "01010101010101010101010101010101",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.107Z",
-				dateModified: "2024-08-22T11:43:20.109Z",
 				status: "success",
 				payload: {
 					id: 1,
 					counter: 1
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.110Z",
-				retainUntil: 1724327010109
+					id: 1,
+					counter: 2
+				}
 			},
 			{
 				id: "02020202020202020202020202020202",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.212Z",
-				dateModified: "2024-08-22T11:43:20.214Z",
 				status: "success",
 				payload: {
 					id: 2,
 					counter: 2
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.215Z",
-				retainUntil: 1724327010214
+					id: 2,
+					counter: 3
+				}
 			},
 			{
 				id: "03030303030303030303030303030303",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.317Z",
-				dateModified: "2024-08-22T11:43:20.319Z",
 				status: "success",
 				payload: {
 					id: 3,
 					counter: 3
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.320Z",
-				retainUntil: 1724327010319
+					id: 3,
+					counter: 4
+				}
 			},
 			{
 				id: "04040404040404040404040404040404",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.422Z",
-				dateModified: "2024-08-22T11:43:20.424Z",
 				status: "success",
 				payload: {
 					id: 4,
 					counter: 4
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.425Z",
-				retainUntil: 1724327010424
+					id: 4,
+					counter: 5
+				}
 			}
 		]);
 	});
@@ -396,112 +333,90 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 	test("can add multiple tasks and process them in order, when one item fails and no retry", async () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-		let hasErrored = false;
-		let counter = 0;
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
+		await backgroundTaskConnector.registerHandler(
 			"my-type",
-			async payload => {
-				if (payload.id === 2 && !hasErrored) {
-					hasErrored = true;
-					throw new GeneralError("Test", "error");
-				}
-				payload.counter = counter++;
-				return { res: "ok" };
-			}
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
 		);
 
 		await backgroundTaskConnector.start("");
 		for (let i = 0; i < 5; i++) {
-			await backgroundTaskConnector.create("my-type", { id: i, counter: 0 }, { retainFor: 10000 });
+			await backgroundTaskConnector.create(
+				"my-type",
+				{ id: i, counter: i, throw: i === 2 },
+				{ retainFor: 10000 }
+			);
 		}
 
 		await waitForStatus("success", 4);
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		delete store[2]?.error?.stack;
 
-		expect(store).toEqual([
+		expect(store).toMatchObject([
 			{
 				id: "00000000000000000000000000000000",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:20.004Z",
 				status: "success",
 				payload: {
 					id: 0,
 					counter: 0
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.005Z",
-				retainUntil: 1724327010004
+					id: 0,
+					counter: 1
+				}
 			},
 			{
 				id: "01010101010101010101010101010101",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.107Z",
-				dateModified: "2024-08-22T11:43:20.109Z",
 				status: "success",
 				payload: {
 					id: 1,
 					counter: 1
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.110Z",
-				retainUntil: 1724327010109
+					id: 1,
+					counter: 2
+				}
 			},
 			{
 				id: "02020202020202020202020202020202",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.212Z",
-				dateModified: "2024-08-22T11:43:20.214Z",
 				status: "failed",
 				payload: {
 					id: 2,
-					counter: 0
+					counter: 2
 				},
 				error: {
-					name: "GeneralError",
-					source: "Test",
-					message: "test.error"
-				},
-				dateCompleted: "2024-08-22T11:43:20.215Z",
-				retainUntil: 1724327010214
+					name: "Error",
+					message: "error"
+				}
 			},
 			{
 				id: "03030303030303030303030303030303",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.317Z",
-				dateModified: "2024-08-22T11:43:20.319Z",
 				status: "success",
 				payload: {
 					id: 3,
-					counter: 2
+					counter: 3
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.320Z",
-				retainUntil: 1724327010319
+					id: 3,
+					counter: 4
+				}
 			},
 			{
 				id: "04040404040404040404040404040404",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.422Z",
-				dateModified: "2024-08-22T11:43:20.424Z",
 				status: "success",
 				payload: {
 					id: 4,
-					counter: 3
+					counter: 4
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.425Z",
-				retainUntil: 1724327010424
+					id: 4,
+					counter: 5
+				}
 			}
 		]);
 	});
@@ -511,113 +426,95 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			config: { taskInterval: 500 }
 		});
 
-		let hasErrored = false;
-		let counter = 0;
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
+		await backgroundTaskConnector.registerHandler(
 			"my-type",
-			async payload => {
-				if (payload.id === 2 && !hasErrored) {
-					hasErrored = true;
-					throw new GeneralError("Test", "error");
-				}
-				payload.counter = counter++;
-				return { res: "ok" };
-			}
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
 		);
 
 		await backgroundTaskConnector.start("");
 		for (let i = 0; i < 5; i++) {
 			await backgroundTaskConnector.create(
 				"my-type",
-				{ id: i, counter: 0 },
+				{ id: i, counter: 0, throw: i === 2 },
 				{ retainFor: 10000, retryCount: 1, retryInterval: 3000 }
 			);
 		}
 
+		await waitForError(2);
+		const store2 = backgroundTaskEntityStorageConnector.getStore();
+		if (store2[2]?.payload) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(store2[2].payload as any).throw = false;
+		}
 		await waitForStatus("success", 2);
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		delete store[2]?.error?.stack;
-		expect(store).toEqual([
+		expect(store).toMatchObject([
 			{
 				id: "00000000000000000000000000000000",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:20.004Z",
 				status: "success",
 				payload: {
 					id: 0,
 					counter: 0
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.005Z",
-				retainUntil: 1724327010004
+					id: 0,
+					counter: 1
+				}
 			},
 			{
 				id: "01010101010101010101010101010101",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.507Z",
-				dateModified: "2024-08-22T11:43:20.509Z",
 				status: "success",
 				payload: {
 					id: 1,
-					counter: 1
+					counter: 0
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:20.510Z",
-				retainUntil: 1724327010509
+					id: 1,
+					counter: 1
+				}
 			},
 			{
 				id: "02020202020202020202020202020202",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:21.012Z",
-				dateModified: "2024-08-22T11:43:24.017Z",
 				status: "success",
 				payload: {
 					id: 2,
-					counter: 4
+					counter: 0
 				},
-				retainUntil: 1724327014017,
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:24.018Z"
+					id: 2,
+					counter: 1
+				}
 			},
 			{
 				id: "03030303030303030303030303030303",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:21.516Z",
-				dateModified: "2024-08-22T11:43:21.518Z",
 				status: "success",
 				payload: {
 					id: 3,
-					counter: 2
+					counter: 0
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:21.519Z",
-				retainUntil: 1724327011518
+					id: 3,
+					counter: 1
+				}
 			},
 			{
 				id: "04040404040404040404040404040404",
 				type: "my-type",
-				dateCreated: "2024-08-22T11:43:22.021Z",
-				dateModified: "2024-08-22T11:43:22.023Z",
 				status: "success",
 				payload: {
 					id: 4,
-					counter: 3
+					counter: 0
 				},
 				result: {
-					res: "ok"
-				},
-				dateCompleted: "2024-08-22T11:43:22.024Z",
-				retainUntil: 1724327012023
+					id: 4,
+					counter: 1
+				}
 			}
 		]);
 
@@ -640,13 +537,6 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			config: { taskInterval: 1000 }
 		});
 
-		await backgroundTaskConnector.registerHandler<TestPayload, TestResult>(
-			"my-type",
-			async payload => {
-				throw new GeneralError("Test", "error");
-			}
-		);
-
 		await backgroundTaskConnector.start("");
 		const id = await backgroundTaskConnector.create(
 			"my-type",
@@ -657,30 +547,9 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		await backgroundTaskConnector.cancel(id);
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		delete store[0]?.error?.stack;
 
-		expect(store).toEqual([
-			{
-				id: "00000000000000000000000000000000",
-				type: "my-type",
-				dateCreated: "2024-08-22T11:43:20.002Z",
-				dateModified: "2024-08-22T11:43:20.004Z",
-				retryInterval: 10000,
-				retainFor: 10000,
-				status: "cancelled",
-				retriesRemaining: 9,
-				payload: {
-					counter: 0
-				},
-				error: {
-					name: "GeneralError",
-					source: "Test",
-					message: "test.error"
-				},
-				retainUntil: 1724327010004,
-				dateCancelled: "2024-08-22T11:43:21.006Z"
-			}
-		]);
+		expect(store[0].status).toEqual("cancelled");
+		expect(store[0].dateCancelled).toBeDefined();
 	});
 
 	test("can cleanup retained items when passed their retained date", async () => {
@@ -688,11 +557,12 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			config: { taskInterval: 1000 }
 		});
 
+		const now = Date.now();
 		await backgroundTaskEntityStorageConnector.set({
 			id: "00000000000000000000000000000000",
 			type: "my-type",
-			dateCreated: "2024-08-22T11:43:20.002Z",
-			dateModified: "2024-08-22T11:43:20.004Z",
+			dateCreated: new Date(now - 1000).toISOString(),
+			dateModified: new Date(now - 1000).toISOString(),
 			retryInterval: 10000,
 			retainFor: 10000,
 			status: "success",
@@ -700,7 +570,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			payload: {
 				counter: 0
 			},
-			retainUntil: FIRST_TIMESTAMP - 1
+			retainUntil: now - 100
 		});
 
 		await backgroundTaskConnector.start("");
@@ -714,11 +584,12 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			config: { taskInterval: 1000 }
 		});
 
+		const now = Date.now();
 		await backgroundTaskEntityStorageConnector.set({
 			id: "00000000000000000000000000000000",
 			type: "my-type",
-			dateCreated: "2024-08-22T11:43:20.002Z",
-			dateModified: "2024-08-22T11:43:20.004Z",
+			dateCreated: new Date(now).toISOString(),
+			dateModified: new Date(now).toISOString(),
 			retryInterval: 10000,
 			retainFor: 10000,
 			status: "success",
@@ -726,7 +597,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			payload: {
 				counter: 0
 			},
-			retainUntil: FIRST_TIMESTAMP
+			retainUntil: now
 		});
 
 		await backgroundTaskConnector.start("");
@@ -740,11 +611,12 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			config: { taskInterval: 1000 }
 		});
 
+		const now = Date.now();
 		await backgroundTaskEntityStorageConnector.set({
 			id: "00000000000000000000000000000000",
 			type: "my-type",
-			dateCreated: "2024-08-22T11:43:20.002Z",
-			dateModified: "2024-08-22T11:43:20.004Z",
+			dateCreated: new Date(now).toISOString(),
+			dateModified: new Date(now).toISOString(),
 			retryInterval: 10000,
 			retainFor: 10000,
 			status: "success",
@@ -758,5 +630,55 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store.length).toEqual(1);
+	});
+
+	test("can start a clone of the engine in the background task", async () => {
+		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector({
+			config: { taskInterval: 1000 }
+		});
+
+		const engineCore = new EngineCore({
+			config: {
+				debug: true,
+				silent: true,
+				types: {}
+			}
+		});
+		EngineCoreFactory.register("engine", () => engineCore);
+
+		await backgroundTaskConnector.registerHandler(
+			"my-type",
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethodWithEngine"
+		);
+
+		await backgroundTaskConnector.create("my-type", { counter: 1 }, { retainFor: 10000 });
+		await backgroundTaskConnector.start("");
+
+		const store = backgroundTaskEntityStorageConnector.getStore();
+		expect(store).toMatchObject([
+			{
+				id: "00000000000000000000000000000000",
+				payload: {
+					counter: 1
+				},
+				result: {
+					counter: 2,
+					engineCloneData: {
+						config: {
+							debug: true,
+							silent: true,
+							types: {}
+						},
+						state: {
+							bootstrappedComponents: []
+						},
+						typeInitialisers: []
+					}
+				},
+				status: "success",
+				type: "my-type"
+			}
+		]);
 	});
 });

@@ -116,15 +116,9 @@ Nothing.
 
 ### registerHandler()
 
-> **registerHandler**\<`T`, `U`\>(`taskType`, `handler`): `Promise`\<`void`\>
+> **registerHandler**(`taskType`, `module`, `method`): `Promise`\<`void`\>
 
 Register a handler for a task.
-
-#### Type Parameters
-
-• **T**
-
-• **U**
 
 #### Parameters
 
@@ -132,9 +126,13 @@ Register a handler for a task.
 
 The type of the task the handler can process.
 
-• **handler**: `BackgroundTaskHandler`\<`T`, `U`\>
+• **module**: `string`
 
-The handler for the task.
+The module the handler is in.
+
+• **method**: `string`
+
+The method in the module to execute.
 
 #### Returns
 

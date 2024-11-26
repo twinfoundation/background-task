@@ -5,6 +5,12 @@
  */
 export interface IEntityStorageBackgroundTaskConnectorConfig {
 	/**
+	 * The name of the engine to clone when creating the background task connector.
+	 * @default engine
+	 */
+	engineName?: string;
+
+	/**
 	 * The default interval to leave between tasks in milliseconds, defaults to 100ms.
 	 */
 	taskInterval?: number;
