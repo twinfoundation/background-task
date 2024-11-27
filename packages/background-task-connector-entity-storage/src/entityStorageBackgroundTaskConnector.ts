@@ -725,9 +725,16 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 					}
 				});
 
-				// Get the clone data for the current engine
+				// Get the clone data for the current engine, if there is one
+				// we don't always need an engine if the task is not dependant on it
 				const engine = EngineCoreFactory.getIfExists(this._engineName);
 				const engineCloneData = engine?.getCloneData();
+
+				// By default we silence the cloned engine, the task can always
+				// switch logging back on if it wants to
+				if (!Is.empty(engineCloneData)) {
+					engineCloneData.config.silent = true;
+				}
 
 				// Execute the task, if it throws we will catch this and store it as a failure
 				const result = await ModuleHelper.execModuleMethodThread(
