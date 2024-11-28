@@ -107,7 +107,17 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		await backgroundTaskConnector.create("my-type", { counter: 0 });
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		expect(store).toEqual([]);
+		expect(store).toMatchObject([
+			{
+				id: "00000000000000000000000000000000",
+				payload: {
+					counter: 0
+				},
+				retainFor: 0,
+				status: "processing",
+				type: "my-type"
+			}
+		]);
 	});
 
 	test("can create a task with handler and retainment", async () => {
@@ -121,6 +131,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 
 		await backgroundTaskConnector.start("");
 		await backgroundTaskConnector.create("my-type", { counter: 0 }, { retainFor: 10000 });
+
+		await waitForStatus("success");
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
@@ -153,6 +165,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			{ throw: true, counter: 0 },
 			{ retainFor: 10000 }
 		);
+
+		await waitForStatus("failed");
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
@@ -191,6 +205,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			retryCount: 1,
 			retryInterval: 1000
 		});
+
+		await waitForStatus("pending");
 
 		let store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
@@ -654,6 +670,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 
 		await backgroundTaskConnector.create("my-type", { counter: 1 }, { retainFor: 10000 });
 		await backgroundTaskConnector.start("");
+
+		await waitForStatus("success");
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([

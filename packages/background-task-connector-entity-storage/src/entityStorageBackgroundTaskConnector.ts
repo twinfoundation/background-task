@@ -682,9 +682,29 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 						const now = Date.now();
 						const nextProcess = new Date(nextTask.dateNextProcess).getTime();
 
-						// Already reached the epoch for the next item, so process it now.
+						// Already reached the epoch for the next item, so process it immediately.
+						// But don't hold up the current process.
 						if (nextProcess <= now) {
-							await this.processTask(nextTask);
+							if (this._taskHandlers[nextTask.type]) {
+								// Immediately set the task to processing to prevent multiple instances of the same task running.
+								this._currentTasks[nextTask.type].task = nextTask;
+								nextTask.status = TaskStatus.Processing;
+								nextTask.dateModified = new Date(Date.now()).toISOString();
+								await this._backgroundTaskEntityStorageConnector.set(nextTask);
+
+								setTimeout(async () => this.runTask(nextTask));
+							} else {
+								this._logging?.log({
+									level: "error",
+									source: this.CLASS_NAME,
+									ts: Date.now(),
+									message: "noHandler",
+									data: {
+										id: nextTask.id,
+										type: nextTask.type
+									}
+								});
+							}
 						} else {
 							// Otherwise, wait until the next process time.
 							this._currentTasks[taskType].waitTimerId = setTimeout(
@@ -701,132 +721,113 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	}
 
 	/**
-	 * Process the task.
+	 * Run the task.
 	 * @internal
 	 */
-	private async processTask(task: BackgroundTask): Promise<void> {
-		if (this._taskHandlers[task.type]) {
-			let taskError: IError | undefined;
-			try {
-				// Immediately set the task to processing to prevent multiple instances of the same task running.
-				task.status = TaskStatus.Processing;
-				task.dateModified = new Date(Date.now()).toISOString();
-				await this._backgroundTaskEntityStorageConnector.set(task);
-				this._currentTasks[task.type].task = task;
-
-				this._logging?.log({
-					level: "info",
-					source: this.CLASS_NAME,
-					ts: Date.now(),
-					message: "start",
-					data: {
-						id: task.id,
-						type: task.type
-					}
-				});
-
-				// Get the clone data for the current engine, if there is one
-				// we don't always need an engine if the task is not dependant on it
-				const engine = EngineCoreFactory.getIfExists(this._engineName);
-				const engineCloneData = engine?.getCloneData();
-
-				// By default we silence the cloned engine, the task can always
-				// switch logging back on if it wants to
-				if (!Is.empty(engineCloneData)) {
-					engineCloneData.config.silent = true;
-				}
-
-				// Execute the task, if it throws we will catch this and store it as a failure
-				const result = await ModuleHelper.execModuleMethodThread(
-					this._taskHandlers[task.type].module,
-					this._taskHandlers[task.type].method,
-					Is.empty(task.payload) ? [engineCloneData] : [engineCloneData, task.payload]
-				);
-
-				// No error so set the result and complete the task.
-				task.result = result;
-				task.status = TaskStatus.Success;
-				task.dateNextProcess = undefined;
-				task.dateCompleted = new Date(Date.now()).toISOString();
-				delete task.retriesRemaining;
-				delete task.retryInterval;
-				delete task.error;
-			} catch (err) {
-				// Task handler threw an error, so set the error which will trigger a retry if needed.
-				taskError = BaseError.fromError(err).toJsonObject();
-				if (
-					taskError.message === `${StringHelper.camelCase(nameof(ModuleHelper))}.workerException` &&
-					!Is.empty(taskError.inner)
-				) {
-					taskError = BaseError.fromError(taskError.inner).toJsonObject();
-				}
-			}
-
-			// If there is an error, set the task to failed and handle retries if needed.
-			if (Is.object(taskError)) {
-				task.error = taskError;
-
-				// If there are retries remaining, set the task to pending and schedule the next retry.
-				if (Is.integer(task.retriesRemaining) && task.retriesRemaining > 0) {
-					task.status = TaskStatus.Pending;
-					task.retriesRemaining--;
-					const nextRetryMs = task.retryInterval ?? this._retryInterval;
-					task.dateNextProcess = new Date(
-						new Date(task.dateModified).getTime() + nextRetryMs
-					).toISOString();
-				} else {
-					// Otherwise set the task to failed.
-					task.status = TaskStatus.Failed;
-					task.dateCompleted = new Date(Date.now()).toISOString();
-					task.dateNextProcess = undefined;
-				}
-			}
-
-			// If the retainFor is 0, the default, it should be removed immediately.
-			// If the retainFor is -1, it should be retained forever.
-			// If it has a value in milliseconds, it should be retained until the retainUntil date.
-			if (task.retainFor === 0) {
-				await this._backgroundTaskEntityStorageConnector.remove(task.id);
-			} else {
-				task.retainUntil = this.calculateRetainTimestamp(task);
-				if (Is.integer(task.retainUntil)) {
-					delete task.retainFor;
-				}
-				await this._backgroundTaskEntityStorageConnector.set(task);
-			}
-
-			const stateChangeCallback = this._taskHandlers[task.type].stateChangeCallback;
-			if (!Is.empty(stateChangeCallback)) {
-				await stateChangeCallback(task);
-			}
-
+	private async runTask(task: BackgroundTask): Promise<void> {
+		let taskError: IError | undefined;
+		try {
 			this._logging?.log({
 				level: "info",
 				source: this.CLASS_NAME,
 				ts: Date.now(),
-				message: "complete",
-				data: {
-					id: task.id,
-					type: task.type,
-					status: task.status
-				}
-			});
-
-			// Start processing of next task after a short interval
-			delete this._currentTasks[task.type].task;
-			setTimeout(async () => this.processTasks(task.type), this._taskInterval);
-		} else {
-			this._logging?.log({
-				level: "error",
-				source: this.CLASS_NAME,
-				ts: Date.now(),
-				message: "noHandler",
+				message: "start",
 				data: {
 					id: task.id,
 					type: task.type
 				}
 			});
+
+			// Get the clone data for the current engine, if there is one
+			// we don't always need an engine if the task is not dependant on it
+			const engine = EngineCoreFactory.getIfExists(this._engineName);
+			const engineCloneData = engine?.getCloneData();
+
+			// By default we silence the cloned engine, the task can always
+			// switch logging back on if it wants to
+			if (!Is.empty(engineCloneData)) {
+				engineCloneData.config.silent = true;
+			}
+
+			// Execute the task, if it throws we will catch this and store it as a failure
+			const result = await ModuleHelper.execModuleMethodThread(
+				this._taskHandlers[task.type].module,
+				this._taskHandlers[task.type].method,
+				Is.empty(task.payload) ? [engineCloneData] : [engineCloneData, task.payload]
+			);
+
+			// No error so set the result and complete the task.
+			task.result = result;
+			task.status = TaskStatus.Success;
+			task.dateNextProcess = undefined;
+			task.dateCompleted = new Date(Date.now()).toISOString();
+			delete task.retriesRemaining;
+			delete task.retryInterval;
+			delete task.error;
+		} catch (err) {
+			// Task handler threw an error, so set the error which will trigger a retry if needed.
+			taskError = BaseError.fromError(err).toJsonObject();
+			if (
+				taskError.message === `${StringHelper.camelCase(nameof(ModuleHelper))}.workerException` &&
+				!Is.empty(taskError.inner)
+			) {
+				taskError = BaseError.fromError(taskError.inner).toJsonObject();
+			}
 		}
+
+		// If there is an error, set the task to failed and handle retries if needed.
+		if (Is.object(taskError)) {
+			task.error = taskError;
+
+			// If there are retries remaining, set the task to pending and schedule the next retry.
+			if (Is.integer(task.retriesRemaining) && task.retriesRemaining > 0) {
+				task.status = TaskStatus.Pending;
+				task.retriesRemaining--;
+				const nextRetryMs = task.retryInterval ?? this._retryInterval;
+				task.dateNextProcess = new Date(
+					new Date(task.dateModified).getTime() + nextRetryMs
+				).toISOString();
+			} else {
+				// Otherwise set the task to failed.
+				task.status = TaskStatus.Failed;
+				task.dateCompleted = new Date(Date.now()).toISOString();
+				task.dateNextProcess = undefined;
+			}
+		}
+
+		// If the retainFor is 0, the default, it should be removed immediately.
+		// If the retainFor is -1, it should be retained forever.
+		// If it has a value in milliseconds, it should be retained until the retainUntil date.
+		if (task.retainFor === 0) {
+			await this._backgroundTaskEntityStorageConnector.remove(task.id);
+		} else {
+			task.retainUntil = this.calculateRetainTimestamp(task);
+			if (Is.integer(task.retainUntil)) {
+				delete task.retainFor;
+			}
+			await this._backgroundTaskEntityStorageConnector.set(task);
+		}
+
+		const stateChangeCallback = this._taskHandlers[task.type].stateChangeCallback;
+		if (!Is.empty(stateChangeCallback)) {
+			await stateChangeCallback(task);
+		}
+
+		this._logging?.log({
+			level: "info",
+			source: this.CLASS_NAME,
+			ts: Date.now(),
+			message: "complete",
+			data: {
+				id: task.id,
+				type: task.type,
+				status: task.status
+			}
+		});
+
+		// Start processing of next task after a short interval
+		delete this._currentTasks[task.type].task;
+		setTimeout(async () => this.processTasks(task.type), this._taskInterval);
 	}
 
 	/**
