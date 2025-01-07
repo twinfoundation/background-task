@@ -34,7 +34,7 @@ import { type ILoggingConnector, LoggingConnectorFactory } from "@twin.org/loggi
 import { ModuleHelper } from "@twin.org/modules";
 import { nameof } from "@twin.org/nameof";
 import type { BackgroundTask } from "./entities/backgroundTask";
-import type { IEntityStorageBackgroundTaskConnectorConfig } from "./models/IEntityStorageBackgroundTaskConnectorConfig";
+import type { IEntityStorageBackgroundTaskConnectorConstructorOptions } from "./models/IEntityStorageBackgroundTaskConnectorConstructorOptions";
 
 /**
  * Class for performing background task operations in entity storage.
@@ -142,15 +142,8 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	/**
 	 * Create a new instance of EntityStorageBackgroundTaskConnector.
 	 * @param options The options for the connector.
-	 * @param options.backgroundTaskEntityStorageType The background task entity storage connector type, defaults to "background-task".
-	 * @param options.loggingConnectorType The logging connector type, defaults to "logging".
-	 * @param options.config The configuration for the connector.
 	 */
-	constructor(options?: {
-		backgroundTaskEntityStorageType?: string;
-		loggingConnectorType?: string;
-		config?: IEntityStorageBackgroundTaskConnectorConfig;
-	}) {
+	constructor(options?: IEntityStorageBackgroundTaskConnectorConstructorOptions) {
 		this._backgroundTaskEntityStorageConnector = EntityStorageConnectorFactory.get(
 			options?.backgroundTaskEntityStorageType ?? "background-task"
 		);
