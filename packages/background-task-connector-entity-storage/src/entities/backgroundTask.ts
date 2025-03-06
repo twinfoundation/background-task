@@ -24,13 +24,13 @@ export class BackgroundTask {
 	/**
 	 * The retry interval in milliseconds, undefined if default scheduling.
 	 */
-	@property({ type: "number" })
+	@property({ type: "number", optional: true })
 	public retryInterval?: number;
 
 	/**
 	 * The number of retries remaining, undefined if infinite retries.
 	 */
-	@property({ type: "number" })
+	@property({ type: "number", optional: true })
 	public retriesRemaining?: number;
 
 	/**
@@ -48,31 +48,36 @@ export class BackgroundTask {
 	/**
 	 * The date the task is next to be processed.
 	 */
-	@property({ type: "string", format: "date-time", sortDirection: SortDirection.Ascending })
+	@property({
+		type: "string",
+		format: "date-time",
+		sortDirection: SortDirection.Ascending,
+		optional: true
+	})
 	public dateNextProcess?: string;
 
 	/**
 	 * The date the task was cancelled.
 	 */
-	@property({ type: "string", format: "date-time" })
+	@property({ type: "string", format: "date-time", optional: true })
 	public dateCancelled?: string;
 
 	/**
 	 * The date the task was completed.
 	 */
-	@property({ type: "string", format: "date-time" })
+	@property({ type: "string", format: "date-time", optional: true })
 	public dateCompleted?: string;
 
 	/**
 	 * The amount of time in milliseconds to retain the task after completion.
 	 */
-	@property({ type: "number" })
+	@property({ type: "number", optional: true })
 	public retainFor?: number;
 
 	/**
 	 * The timestamp of when to retain the task until.
 	 */
-	@property({ type: "number" })
+	@property({ type: "number", optional: true })
 	public retainUntil?: number;
 
 	/**
@@ -84,18 +89,18 @@ export class BackgroundTask {
 	/**
 	 * The payload to execute the task with.
 	 */
-	@property({ type: "object" })
+	@property({ type: "object", optional: true })
 	public payload?: unknown;
 
 	/**
 	 * The result of the execution.
 	 */
-	@property({ type: "object" })
+	@property({ type: "object", optional: true })
 	public result?: unknown;
 
 	/**
 	 * The error at last execution.
 	 */
-	@property({ type: "object" })
+	@property({ type: "object", optional: true })
 	public error?: IError;
 }
