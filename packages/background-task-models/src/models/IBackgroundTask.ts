@@ -4,7 +4,7 @@ import type { IError } from "@twin.org/core";
 import type { TaskStatus } from "./taskStatus";
 
 /**
- * Interface describing a background task connector.
+ * Interface describing a background task.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface IBackgroundTask<T = any, U = any> {

@@ -1,6 +1,6 @@
 # Interface: IBackgroundTask\<T, U\>
 
-Interface describing a background task connector.
+Interface describing a background task.
 
 ## Type Parameters
 
