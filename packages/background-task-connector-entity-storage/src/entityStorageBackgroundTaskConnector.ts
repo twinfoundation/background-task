@@ -685,7 +685,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 								nextTask.dateModified = new Date(Date.now()).toISOString();
 								await this._backgroundTaskEntityStorageConnector.set(nextTask);
 
-								setTimeout(async () => this.runTask(nextTask));
+								await this.runTask(nextTask);
 							} else {
 								this._logging?.log({
 									level: "error",
