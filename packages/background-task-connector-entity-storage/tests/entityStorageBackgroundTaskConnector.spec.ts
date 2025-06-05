@@ -679,7 +679,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 							types: {}
 						},
 						state: {
-							bootstrappedComponents: []
+							componentStates: {}
 						},
 						typeInitialisers: []
 					}
