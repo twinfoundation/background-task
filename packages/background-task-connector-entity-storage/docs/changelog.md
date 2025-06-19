@@ -1,5 +1,19 @@
 # @twin.org/background-task-connector-entity-storage - Changelog
 
+## [0.0.1-next.18](https://github.com/twinfoundation/background-task/compare/background-task-connector-entity-storage-v0.0.1-next.17...background-task-connector-entity-storage-v0.0.1-next.18) (2025-06-19)
+
+
+### Bug Fixes
+
+* **schema:** change `retainUntil` column to BIGINT ([#10](https://github.com/twinfoundation/background-task/issues/10)) ([77f7a14](https://github.com/twinfoundation/background-task/commit/77f7a1473d530008cb9abe1380e13ce845425663))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @twin.org/background-task-models bumped from 0.0.1-next.17 to 0.0.1-next.18
+
 ## [0.0.1-next.17](https://github.com/twinfoundation/background-task/compare/background-task-connector-entity-storage-v0.0.1-next.16...background-task-connector-entity-storage-v0.0.1-next.17) (2025-06-12)
 
 
