@@ -77,7 +77,7 @@ export class BackgroundTask {
 	/**
 	 * The timestamp of when to retain the task until.
 	 */
-	@property({ type: "number", optional: true })
+	@property({ type: "integer", optional: true, format: "uint64" })
 	public retainUntil?: number;
 
 	/**
