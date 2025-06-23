@@ -1,16 +1,24 @@
 // Copyright 2024 IOTA Stiftung.
 // SPDX-License-Identifier: Apache-2.0.
-import type { IScheduledTaskTime, ITaskSchedulerComponent } from "@twin.org/background-task-models";
+import type {
+	IScheduledTaskInfo,
+	IScheduledTaskTime,
+	ITaskSchedulerComponent
+} from "@twin.org/background-task-models";
 import { BaseError, Is } from "@twin.org/core";
 import { type ILoggingConnector, LoggingConnectorFactory } from "@twin.org/logging-models";
 import { nameof } from "@twin.org/nameof";
 import type { ITaskSchedulerConstructorOptions } from "./models/ITaskSchedulerConstructorOptions";
-import type { IScheduledTaskInfo } from "../../background-task-models/dist/types/models/IScheduledTaskInfo";
 
 /**
  * Class for performing task operations in entity storage.
  */
 export class TaskScheduler implements ITaskSchedulerComponent {
+	/**
+	 * The namespace supported by the task scheduler.
+	 */
+	public static readonly NAMESPACE: string = "task-scheduler";
+
 	/**
 	 * Runtime name for the class.
 	 */

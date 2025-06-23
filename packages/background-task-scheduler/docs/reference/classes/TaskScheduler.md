@@ -28,6 +28,14 @@ The options for the scheduler.
 
 ## Properties
 
+### NAMESPACE
+
+> `readonly` `static` **NAMESPACE**: `string` = `"task-scheduler"`
+
+The namespace supported by the task scheduler.
+
+***
+
 ### CLASS\_NAME
 
 > `readonly` **CLASS\_NAME**: `string`
