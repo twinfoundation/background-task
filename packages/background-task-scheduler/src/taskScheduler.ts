@@ -13,7 +13,7 @@ import type { ITaskSchedulerConstructorOptions } from "./models/ITaskSchedulerCo
 /**
  * Class for performing task operations in entity storage.
  */
-export class TaskScheduler implements ITaskSchedulerComponent {
+export class TaskSchedulerComponent implements ITaskSchedulerComponent {
 	/**
 	 * The namespace supported by the task scheduler.
 	 */
@@ -22,7 +22,7 @@ export class TaskScheduler implements ITaskSchedulerComponent {
 	/**
 	 * Runtime name for the class.
 	 */
-	public readonly CLASS_NAME: string = nameof<TaskScheduler>();
+	public readonly CLASS_NAME: string = nameof<TaskSchedulerComponent>();
 
 	/**
 	 * The logger for the task connector.
@@ -54,7 +54,7 @@ export class TaskScheduler implements ITaskSchedulerComponent {
 	private _timer?: NodeJS.Timeout;
 
 	/**
-	 * Create a new instance of TaskScheduler.
+	 * Create a new instance of TaskSchedulerComponent.
 	 * @param options The options for the scheduler.
 	 */
 	constructor(options?: ITaskSchedulerConstructorOptions) {

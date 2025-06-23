@@ -1,6 +1,6 @@
 // Copyright 2024 IOTA Stiftung.
 // SPDX-License-Identifier: Apache-2.0.
-import { TaskScheduler } from "../src/taskScheduler";
+import { TaskSchedulerComponent } from "../src/taskScheduler";
 
 describe("TaskScheduler", () => {
 	beforeEach(() => {
@@ -15,13 +15,13 @@ describe("TaskScheduler", () => {
 	});
 
 	test("can construct with dependencies", async () => {
-		const taskScheduler = new TaskScheduler();
+		const taskScheduler = new TaskSchedulerComponent();
 
 		expect(taskScheduler).toBeDefined();
 	});
 
 	test("can schedule a one off task to run at a specific time with no interval", async () => {
-		const taskScheduler = new TaskScheduler({
+		const taskScheduler = new TaskSchedulerComponent({
 			config: {
 				overrideInterval: 1000
 			}
@@ -56,7 +56,7 @@ describe("TaskScheduler", () => {
 	});
 
 	test("can schedule a one off task to run at a specific time with minutes interval", async () => {
-		const taskScheduler = new TaskScheduler({
+		const taskScheduler = new TaskSchedulerComponent({
 			config: {
 				overrideInterval: 1000
 			}
@@ -97,7 +97,7 @@ describe("TaskScheduler", () => {
 	});
 
 	test("can remove a task", async () => {
-		const taskScheduler = new TaskScheduler({
+		const taskScheduler = new TaskSchedulerComponent({
 			config: {
 				overrideInterval: 1000
 			}
@@ -135,7 +135,7 @@ describe("TaskScheduler", () => {
 	});
 
 	test("can remove a task during a callback", async () => {
-		const taskScheduler = new TaskScheduler({
+		const taskScheduler = new TaskSchedulerComponent({
 			config: {
 				overrideInterval: 1000
 			}
@@ -170,7 +170,7 @@ describe("TaskScheduler", () => {
 	});
 
 	test("can throw an error in a task and continue", async () => {
-		const taskScheduler = new TaskScheduler({
+		const taskScheduler = new TaskSchedulerComponent({
 			config: {
 				overrideInterval: 1000
 			}
