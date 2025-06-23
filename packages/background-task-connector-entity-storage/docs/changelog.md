@@ -1,5 +1,19 @@
 # @twin.org/background-task-connector-entity-storage - Changelog
 
+## [0.0.1-next.21](https://github.com/twinfoundation/background-task/compare/background-task-connector-entity-storage-v0.0.1-next.20...background-task-connector-entity-storage-v0.0.1-next.21) (2025-06-23)
+
+
+### Miscellaneous Chores
+
+* **background-task-connector-entity-storage:** Synchronize repo versions
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @twin.org/background-task-models bumped from 0.0.1-next.20 to 0.0.1-next.21
+
 ## [0.0.1-next.20](https://github.com/twinfoundation/background-task/compare/background-task-connector-entity-storage-v0.0.1-next.19...background-task-connector-entity-storage-v0.0.1-next.20) (2025-06-23)
 
 
