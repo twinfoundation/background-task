@@ -169,8 +169,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					throw: true
 				},
 				error: {
-					name: "Error",
-					message: "error"
+					name: "GeneralError",
+					message: "moduleHelper.resultError"
 				}
 			}
 		]);
@@ -211,8 +211,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					throw: true
 				},
 				error: {
-					name: "Error",
-					message: "error"
+					name: "GeneralError",
+					message: "moduleHelper.resultError"
 				}
 			}
 		]);
@@ -394,8 +394,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					counter: 2
 				},
 				error: {
-					name: "Error",
-					message: "error"
+					name: "GeneralError",
+					message: "moduleHelper.resultError"
 				}
 			},
 			{

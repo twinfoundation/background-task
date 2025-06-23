@@ -48,7 +48,8 @@
 	},
 	"workspaces": [
 		"packages/background-task-models",
-		"packages/background-task-connector-entity-storage"
+		"packages/background-task-connector-entity-storage",
+		"packages/background-task-scheduler"
 	],
 	"type": "module"
 }

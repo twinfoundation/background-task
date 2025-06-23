@@ -16,6 +16,11 @@
 			"package-name": "background-task-connector-entity-storage",
 			"changelog-path": "docs/changelog.md",
 			"extra-files": ["src/index.ts"]
+		},
+		"packages/background-task-scheduler": {
+			"package-name": "background-task-scheduler",
+			"changelog-path": "docs/changelog.md",
+			"extra-files": ["src/index.ts"]
 		}
 	},
 	"plugins": [
@@ -23,7 +28,11 @@
 		{
 			"type": "linked-versions",
 			"groupName": "repo",
-			"components": ["background-task-models", "background-task-connector-entity-storage"]
+			"components": [
+				"background-task-models",
+				"background-task-connector-entity-storage",
+				"background-task-scheduler"
+			]
 		}
 	]
 }
