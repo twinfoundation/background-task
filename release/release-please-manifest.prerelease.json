@@ -1,0 +1,5 @@
+{
+	"packages/background-task-models": "0.0.1-next.21",
+	"packages/background-task-connector-entity-storage": "0.0.1-next.21",
+	"packages/background-task-scheduler": "0.0.1-next.21"
+}
