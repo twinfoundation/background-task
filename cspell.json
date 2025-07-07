@@ -17,7 +17,7 @@
 		".eslintrc.cjs",
 		"**/wordlists/**"
 	],
-	"words": ["abbrev", "nameof", "Secp", "Stiftung"],
+	"words": ["abbrev", "autorelease", "nameof", "Secp", "Stiftung"],
 	"ignoreRegExpList": [
 		"/from\\s+(['\"]).*\\1/",
 		"/eslint-disable.*/",
