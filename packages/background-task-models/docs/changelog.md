@@ -1,5 +1,12 @@
 # @twin.org/background-task-models - Changelog
 
+## 0.0.1 (2025-07-07)
+
+
+### Features
+
+* release to production ([7ce9896](https://github.com/twinfoundation/background-task/commit/7ce989659e6819f05655c86b1bda2a265af5d281))
+
 ## [0.0.1-next.21](https://github.com/twinfoundation/background-task/compare/background-task-models-v0.0.1-next.20...background-task-models-v0.0.1-next.21) (2025-06-23)
 
 
