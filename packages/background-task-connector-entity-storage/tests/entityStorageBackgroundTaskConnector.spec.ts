@@ -20,8 +20,8 @@ let backgroundTaskEntityStorageConnector: MemoryEntityStorageConnector<Backgroun
  * @param itemIndex The item index to wait for.
  */
 async function waitForStatus(status: string, itemIndex: number = 0): Promise<void> {
-	for (let i = 0; i < 5000; i++) {
-		await new Promise(resolve => setTimeout(resolve, 1000));
+	for (let i = 0; i < 500; i++) {
+		await new Promise(resolve => setTimeout(resolve, 100));
 		if (backgroundTaskEntityStorageConnector.getStore()[itemIndex]?.status === status) {
 			return;
 		}
@@ -35,8 +35,8 @@ async function waitForStatus(status: string, itemIndex: number = 0): Promise<voi
  * @param itemIndex The item index to wait for.
  */
 async function waitForError(itemIndex: number = 0): Promise<void> {
-	for (let i = 0; i < 5000; i++) {
-		await new Promise(resolve => setTimeout(resolve, 1000));
+	for (let i = 0; i < 500; i++) {
+		await new Promise(resolve => setTimeout(resolve, 100));
 		if (backgroundTaskEntityStorageConnector.getStore()[itemIndex]?.error) {
 			return;
 		}
