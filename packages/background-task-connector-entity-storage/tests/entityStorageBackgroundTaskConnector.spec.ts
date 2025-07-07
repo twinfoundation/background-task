@@ -21,10 +21,10 @@ let backgroundTaskEntityStorageConnector: MemoryEntityStorageConnector<Backgroun
  */
 async function waitForStatus(status: string, itemIndex: number = 0): Promise<void> {
 	for (let i = 0; i < 500; i++) {
-		await new Promise(resolve => setTimeout(resolve, 100));
 		if (backgroundTaskEntityStorageConnector.getStore()[itemIndex]?.status === status) {
 			return;
 		}
+		await new Promise(resolve => setTimeout(resolve, 100));
 	}
 	// eslint-disable-next-line no-restricted-syntax
 	throw new Error("Timeout waiting for status");
@@ -36,10 +36,10 @@ async function waitForStatus(status: string, itemIndex: number = 0): Promise<voi
  */
 async function waitForError(itemIndex: number = 0): Promise<void> {
 	for (let i = 0; i < 500; i++) {
-		await new Promise(resolve => setTimeout(resolve, 100));
 		if (backgroundTaskEntityStorageConnector.getStore()[itemIndex]?.error) {
 			return;
 		}
+		await new Promise(resolve => setTimeout(resolve, 100));
 	}
 	// eslint-disable-next-line no-restricted-syntax
 	throw new Error("Timeout waiting for error");
@@ -51,7 +51,6 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 	});
 
 	beforeEach(() => {
-		console.log("beforeEach");
 		backgroundTaskEntityStorageConnector = new MemoryEntityStorageConnector<BackgroundTask>({
 			entitySchema: nameof<BackgroundTask>()
 		});
@@ -68,115 +67,114 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		}
 
 		RandomHelper.generate = mockRandom;
-		console.log("beforeEach done");
 	});
 
-	// test("can construct with dependencies", async () => {
-	// 	const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
+	test("can construct with dependencies", async () => {
+		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-	// 	expect(backgroundTaskConnector).toBeDefined();
-	// });
+		expect(backgroundTaskConnector).toBeDefined();
+	});
 
-	// test("can create a task with no handler", async () => {
-	// 	const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
+	test("can create a task with no handler", async () => {
+		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-	// 	await backgroundTaskConnector.start("");
-	// 	const taskId = await backgroundTaskConnector.create("my-type");
-	// 	expect(taskId.split(":")[0]).toEqual("background-task");
-	// 	expect(taskId.split(":")[1]).toEqual("entity-storage");
+		await backgroundTaskConnector.start("");
+		const taskId = await backgroundTaskConnector.create("my-type");
+		expect(taskId.split(":")[0]).toEqual("background-task");
+		expect(taskId.split(":")[1]).toEqual("entity-storage");
 
-	// 	const store = backgroundTaskEntityStorageConnector.getStore();
-	// 	expect(store).toMatchObject([
-	// 		{
-	// 			id: "00000000000000000000000000000000",
-	// 			retainFor: 0,
-	// 			status: "pending",
-	// 			type: "my-type"
-	// 		}
-	// 	]);
-	// });
+		const store = backgroundTaskEntityStorageConnector.getStore();
+		expect(store).toMatchObject([
+			{
+				id: "00000000000000000000000000000000",
+				retainFor: 0,
+				status: "pending",
+				type: "my-type"
+			}
+		]);
+	});
 
-	// test("can create a task with handler and no retainment", async () => {
-	// 	const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
+	test("can create a task with handler and no retainment", async () => {
+		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-	// 	await backgroundTaskConnector.registerHandler(
-	// 		"my-type",
-	// 		`file://${path.join(__dirname, "testModule.js")}`,
-	// 		"testMethod"
-	// 	);
+		await backgroundTaskConnector.registerHandler(
+			"my-type",
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
+		);
 
-	// 	await backgroundTaskConnector.start("");
-	// 	await backgroundTaskConnector.create("my-type", { counter: 0 });
+		await backgroundTaskConnector.start("");
+		await backgroundTaskConnector.create("my-type", { counter: 0 });
 
-	// 	const store = backgroundTaskEntityStorageConnector.getStore();
-	// 	expect(store).toMatchObject([]);
-	// });
+		const store = backgroundTaskEntityStorageConnector.getStore();
+		expect(store).toMatchObject([]);
+	});
 
-	// test("can create a task with handler and retainment", async () => {
-	// 	const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
+	test("can create a task with handler and retainment", async () => {
+		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-	// 	await backgroundTaskConnector.registerHandler(
-	// 		"my-type",
-	// 		`file://${path.join(__dirname, "testModule.js")}`,
-	// 		"testMethod"
-	// 	);
+		await backgroundTaskConnector.registerHandler(
+			"my-type",
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
+		);
 
-	// 	await backgroundTaskConnector.start("");
-	// 	await backgroundTaskConnector.create("my-type", { counter: 0 }, { retainFor: 10000 });
+		await backgroundTaskConnector.start("");
+		await backgroundTaskConnector.create("my-type", { counter: 0 }, { retainFor: 10000 });
 
-	// 	await waitForStatus("success");
+		await waitForStatus("success");
 
-	// 	const store = backgroundTaskEntityStorageConnector.getStore();
-	// 	expect(store).toMatchObject([
-	// 		{
-	// 			id: "00000000000000000000000000000000",
-	// 			payload: {
-	// 				counter: 0
-	// 			},
-	// 			result: {
-	// 				counter: 1
-	// 			},
-	// 			status: "success",
-	// 			type: "my-type"
-	// 		}
-	// 	]);
-	// });
+		const store = backgroundTaskEntityStorageConnector.getStore();
+		expect(store).toMatchObject([
+			{
+				id: "00000000000000000000000000000000",
+				payload: {
+					counter: 0
+				},
+				result: {
+					counter: 1
+				},
+				status: "success",
+				type: "my-type"
+			}
+		]);
+	});
 
-	// test("can create a task with handler and retainment with error and no retries", async () => {
-	// 	const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
+	test("can create a task with handler and retainment with error and no retries", async () => {
+		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
 
-	// 	await backgroundTaskConnector.registerHandler(
-	// 		"my-type",
-	// 		`file://${path.join(__dirname, "testModule.js")}`,
-	// 		"testMethod"
-	// 	);
+		await backgroundTaskConnector.registerHandler(
+			"my-type",
+			`file://${path.join(__dirname, "testModule.js")}`,
+			"testMethod"
+		);
 
-	// 	await backgroundTaskConnector.start("");
-	// 	await backgroundTaskConnector.create(
-	// 		"my-type",
-	// 		{ throw: true, counter: 0 },
-	// 		{ retainFor: 10000 }
-	// 	);
+		await backgroundTaskConnector.start("");
+		await backgroundTaskConnector.create(
+			"my-type",
+			{ throw: true, counter: 0 },
+			{ retainFor: 10000 }
+		);
 
-	// 	await waitForStatus("failed");
+		await waitForStatus("failed");
 
-	// 	const store = backgroundTaskEntityStorageConnector.getStore();
-	// 	expect(store).toMatchObject([
-	// 		{
-	// 			id: "00000000000000000000000000000000",
-	// 			type: "my-type",
-	// 			status: "failed",
-	// 			payload: {
-	// 				counter: 0,
-	// 				throw: true
-	// 			},
-	// 			error: {
-	// 				name: "GeneralError",
-	// 				message: "moduleHelper.resultError"
-	// 			}
-	// 		}
-	// 	]);
-	// });
+		const store = backgroundTaskEntityStorageConnector.getStore();
+		expect(store).toMatchObject([
+			{
+				id: "00000000000000000000000000000000",
+				type: "my-type",
+				status: "failed",
+				payload: {
+					counter: 0,
+					throw: true
+				},
+				error: {
+					name: "Error",
+					message: "error"
+				}
+			}
+		]);
+	});
 
 	test("can create a task with handler and retainment with error and single retry", async () => {
 		const backgroundTaskConnector = new EntityStorageBackgroundTaskConnector();
@@ -213,8 +211,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					throw: true
 				},
 				error: {
-					name: "GeneralError",
-					message: "moduleHelper.resultError"
+					name: "Error",
+					message: "error"
 				}
 			}
 		]);
@@ -396,8 +394,8 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 					counter: 2
 				},
 				error: {
-					name: "GeneralError",
-					message: "moduleHelper.resultError"
+					name: "Error",
+					message: "error"
 				}
 			},
 			{

@@ -760,7 +760,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 			// Task handler threw an error, so set the error which will trigger a retry if needed.
 			taskError = BaseError.fromError(err).toJsonObject();
 			if (
-				taskError.message === `${StringHelper.camelCase(nameof(ModuleHelper))}.workerException` &&
+				taskError.message === `${StringHelper.camelCase(nameof(ModuleHelper))}.resultError` &&
 				!Is.empty(taskError.inner)
 			) {
 				taskError = BaseError.fromError(taskError.inner).toJsonObject();
