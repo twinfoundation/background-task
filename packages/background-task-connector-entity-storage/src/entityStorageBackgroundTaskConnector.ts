@@ -1,5 +1,6 @@
 // Copyright 2024 IOTA Stiftung.
 // SPDX-License-Identifier: Apache-2.0.
+import { isMainThread, threadId as workerThreadId } from "node:worker_threads";
 import {
 	type IBackgroundTask,
 	type IBackgroundTaskConnector,
@@ -342,6 +343,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		const backgroundTask: BackgroundTask = {
 			id,
 			type,
+			threadId: this.getThreadId(),
 			dateCreated: now,
 			dateModified: now,
 			dateNextProcess: now,
@@ -355,7 +357,10 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		await this._backgroundTaskEntityStorageConnector.set(backgroundTask);
 
 		if (this._started) {
-			await this.processTasks(type);
+			// Give this method a chance to return before processing tasks.
+			setTimeout(async () => {
+				await this.processTasks(type);
+			}, 100);
 		}
 
 		return `background-task:${EntityStorageBackgroundTaskConnector.NAMESPACE}:${id}`;
@@ -498,6 +503,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		const result = await this.internalQuery(
 			taskType,
 			taskStatus ? [taskStatus] : undefined,
+			undefined,
 			sortProperty,
 			sortDirection,
 			cursor,
@@ -514,6 +520,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	 * Get a list of tasks.
 	 * @param taskType The type of the task to get.
 	 * @param taskStatuses The status of the task to get.
+	 * @param threadId The thread id to get tasks for, defaults to all threads.
 	 * @param sortProperty The property to sort by, defaults to dateCreated.
 	 * @param sortDirection The order to sort by, defaults to ascending.
 	 * @param cursor The cursor to get the next page of tasks.
@@ -524,6 +531,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 	private async internalQuery(
 		taskType?: string,
 		taskStatuses?: TaskStatus[],
+		threadId?: string,
 		sortProperty?: "dateCreated" | "dateModified" | "dateCompleted" | "dateNextProcess" | "status",
 		sortDirection?: SortDirection,
 		cursor?: string,
@@ -562,6 +570,14 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 			condition.conditions.push(statusCondition);
 		}
 
+		if (Is.stringValue(threadId)) {
+			condition.conditions.push({
+				property: "threadId",
+				comparison: ComparisonOperator.Equals,
+				value: threadId
+			});
+		}
+
 		const result = await this._backgroundTaskEntityStorageConnector.query(
 			condition,
 			[
@@ -591,6 +607,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		return {
 			id: task.id,
 			type: task.type,
+			threadId: task.threadId,
 			dateCreated: task.dateCreated,
 			dateModified: task.dateModified,
 			dateCompleted: task.dateCompleted,
@@ -660,6 +677,7 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 				const processingTasks = await this.internalQuery(
 					taskType,
 					[TaskStatus.Processing, TaskStatus.Pending],
+					this.getThreadId(),
 					"dateNextProcess",
 					SortDirection.Ascending,
 					undefined,
@@ -883,5 +901,14 @@ export class EntityStorageBackgroundTaskConnector implements IBackgroundTaskConn
 		} catch {
 			// If cleaning up the retained items fail we don't really care, they will get cleaned up on the next sweep.
 		}
+	}
+
+	/**
+	 * Get the thread id for the current thread.
+	 * @returns The thread id.
+	 * @internal
+	 */
+	private getThreadId(): string {
+		return isMainThread ? "main" : workerThreadId.toString();
 	}
 }

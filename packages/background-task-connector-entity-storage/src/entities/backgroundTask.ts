@@ -22,6 +22,12 @@ export class BackgroundTask {
 	public type!: string;
 
 	/**
+	 * The thread id for the task.
+	 */
+	@property({ type: "string", isSecondary: true })
+	public threadId!: string;
+
+	/**
 	 * The retry interval in milliseconds, undefined if default scheduling.
 	 */
 	@property({ type: "number", optional: true })

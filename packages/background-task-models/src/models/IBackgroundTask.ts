@@ -19,6 +19,11 @@ export interface IBackgroundTask<T = any, U = any> {
 	type: string;
 
 	/**
+	 * The thread id for the task.
+	 */
+	threadId: string;
+
+	/**
 	 * The retry interval in milliseconds, undefined if default scheduling.
 	 */
 	retryInterval?: number;

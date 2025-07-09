@@ -48,6 +48,13 @@ async function waitForError(itemIndex: number = 0): Promise<void> {
 describe("EntityStorageBackgroundTaskConnector", () => {
 	beforeAll(() => {
 		initSchema();
+
+		const mockRandom = vi.fn();
+
+		let i = 0;
+		mockRandom.mockImplementation(length => new Uint8Array(length).fill(i++));
+
+		RandomHelper.generate = mockRandom;
 	});
 
 	beforeEach(() => {
@@ -59,14 +66,6 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			"background-task",
 			() => backgroundTaskEntityStorageConnector
 		);
-
-		const mockRandom = vi.fn();
-
-		for (let k = 0; k < 50; k++) {
-			mockRandom.mockImplementationOnce(length => new Uint8Array(length).fill(k));
-		}
-
-		RandomHelper.generate = mockRandom;
 	});
 
 	test("can construct with dependencies", async () => {
@@ -107,7 +106,20 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		await backgroundTaskConnector.create("my-type", { counter: 0 });
 
 		const store = backgroundTaskEntityStorageConnector.getStore();
-		expect(store).toMatchObject([]);
+		expect(store).toMatchObject([
+			{
+				id: "01010101010101010101010101010101",
+				payload: {
+					counter: 0
+				},
+				retainFor: 0,
+				retriesRemaining: undefined,
+				retryInterval: undefined,
+				status: "pending",
+				threadId: "main",
+				type: "my-type"
+			}
+		]);
 	});
 
 	test("can create a task with handler and retainment", async () => {
@@ -127,7 +139,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "02020202020202020202020202020202",
 				payload: {
 					counter: 0
 				},
@@ -161,7 +173,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "03030303030303030303030303030303",
 				type: "my-type",
 				status: "failed",
 				payload: {
@@ -193,18 +205,17 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		await backgroundTaskConnector.create("my-type", data, {
 			retainFor: 10000,
 			retryCount: 1,
-			retryInterval: 1000
+			retryInterval: 2000
 		});
 
-		await waitForStatus("pending");
+		await waitForError();
 
 		let store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "04040404040404040404040404040404",
 				type: "my-type",
-				retryInterval: 1000,
-				retainFor: 10000,
+				retryInterval: 2000,
 				status: "pending",
 				payload: {
 					counter: 0,
@@ -217,15 +228,15 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			}
 		]);
 
+		if (store[0]?.payload) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(store[0].payload as any).throw = false;
+		}
+
 		const task = await backgroundTaskConnector.get(
-			"background-task:entity-storage:00000000000000000000000000000000"
+			"background-task:entity-storage:04040404040404040404040404040404"
 		);
 		expect(task).toBeDefined();
-
-		if (task?.payload) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(task.payload as any).throw = false;
-		}
 
 		await waitForStatus("success");
 
@@ -233,7 +244,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "04040404040404040404040404040404",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -269,7 +280,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "05050505050505050505050505050505",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -282,7 +293,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "01010101010101010101010101010101",
+				id: "06060606060606060606060606060606",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -295,7 +306,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "02020202020202020202020202020202",
+				id: "07070707070707070707070707070707",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -308,7 +319,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "03030303030303030303030303030303",
+				id: "08080808080808080808080808080808",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -321,7 +332,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "04040404040404040404040404040404",
+				id: "09090909090909090909090909090909",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -360,7 +371,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -373,7 +384,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "01010101010101010101010101010101",
+				id: "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -386,7 +397,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "02020202020202020202020202020202",
+				id: "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
 				type: "my-type",
 				status: "failed",
 				payload: {
@@ -399,7 +410,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "03030303030303030303030303030303",
+				id: "0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -412,7 +423,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "04040404040404040404040404040404",
+				id: "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -458,7 +469,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -471,7 +482,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "01010101010101010101010101010101",
+				id: "10101010101010101010101010101010",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -484,7 +495,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "02020202020202020202020202020202",
+				id: "11111111111111111111111111111111",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -497,7 +508,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "03030303030303030303030303030303",
+				id: "12121212121212121212121212121212",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -510,7 +521,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 				}
 			},
 			{
-				id: "04040404040404040404040404040404",
+				id: "13131313131313131313131313131313",
 				type: "my-type",
 				status: "success",
 				payload: {
@@ -531,11 +542,11 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 			SortDirection.Ascending
 		);
 		expect(completedOrder.entities.length).toBe(5);
-		expect(completedOrder.entities[0].id).toBe("00000000000000000000000000000000");
-		expect(completedOrder.entities[1].id).toBe("01010101010101010101010101010101");
-		expect(completedOrder.entities[2].id).toBe("03030303030303030303030303030303");
-		expect(completedOrder.entities[3].id).toBe("04040404040404040404040404040404");
-		expect(completedOrder.entities[4].id).toBe("02020202020202020202020202020202");
+		expect(completedOrder.entities[0].id).toBe("0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f");
+		expect(completedOrder.entities[1].id).toBe("10101010101010101010101010101010");
+		expect(completedOrder.entities[2].id).toBe("12121212121212121212121212121212");
+		expect(completedOrder.entities[3].id).toBe("13131313131313131313131313131313");
+		expect(completedOrder.entities[4].id).toBe("11111111111111111111111111111111");
 	});
 
 	test("can create a task and cancel it", async () => {
@@ -567,6 +578,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		await backgroundTaskEntityStorageConnector.set({
 			id: "00000000000000000000000000000000",
 			type: "my-type",
+			threadId: "main",
 			dateCreated: new Date(now - 1000).toISOString(),
 			dateModified: new Date(now - 1000).toISOString(),
 			retryInterval: 10000,
@@ -594,6 +606,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		await backgroundTaskEntityStorageConnector.set({
 			id: "00000000000000000000000000000000",
 			type: "my-type",
+			threadId: "main",
 			dateCreated: new Date(now).toISOString(),
 			dateModified: new Date(now).toISOString(),
 			retryInterval: 10000,
@@ -621,6 +634,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		await backgroundTaskEntityStorageConnector.set({
 			id: "00000000000000000000000000000000",
 			type: "my-type",
+			threadId: "main",
 			dateCreated: new Date(now).toISOString(),
 			dateModified: new Date(now).toISOString(),
 			retryInterval: 10000,
@@ -666,7 +680,7 @@ describe("EntityStorageBackgroundTaskConnector", () => {
 		const store = backgroundTaskEntityStorageConnector.getStore();
 		expect(store).toMatchObject([
 			{
-				id: "00000000000000000000000000000000",
+				id: "15151515151515151515151515151515",
 				payload: {
 					counter: 1
 				},
